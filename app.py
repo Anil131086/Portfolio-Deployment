@@ -10,9 +10,8 @@ import traceback
 app = Flask(__name__)
 
 # Configuration
-app.config['SECRET_KEY'] = 'your-secret-key-here'  # Change this to a secure secret key
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
 SPREADSHEET_ID = '1HrNDI-Gm_Tmg0SUSe1Aa2mWxyftnTdOJc7OPmZHBMCo'
-CREDENTIALS_PATH = r'C:\Users\hp\Desktop\Python Key\united-time-403410-8e2ac45d1b99.json'
 
 # Update range names for different sheets
 LOGIN_RANGE = 'Sheet1!A:B'  # For existing login credentials
@@ -20,14 +19,24 @@ REGISTER_RANGE = 'Sheet2!A:C'  # New sheet for registration (includes email)
 
 def get_google_sheets_service():
     try:
-        print(f"Attempting to read credentials from: {CREDENTIALS_PATH}")
         SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-        if not os.path.exists(CREDENTIALS_PATH):
-            print(f"Error: Credentials file not found at {CREDENTIALS_PATH}")
-            return None
+        
+        # Get credentials from environment variable
+        creds_json = os.environ.get('GOOGLE_CREDENTIALS')
+        if creds_json:
+            creds_dict = json.loads(creds_json)
+            creds = service_account.Credentials.from_service_account_info(
+                creds_dict, scopes=SCOPES)
+        else:
+            # Fallback to file for local development
+            creds_path = os.environ.get('CREDENTIALS_PATH', r'C:\Users\hp\Desktop\Python Key\united-time-403410-8e2ac45d1b99.json')
+            if not os.path.exists(creds_path):
+                print(f"Error: Credentials not found in environment or at {creds_path}")
+                return None
             
-        creds = service_account.Credentials.from_service_account_file(
-            CREDENTIALS_PATH, scopes=SCOPES)
+            creds = service_account.Credentials.from_service_account_file(
+                creds_path, scopes=SCOPES)
+        
         service = build('sheets', 'v4', credentials=creds)
         print("Successfully connected to Google Sheets API")
         return service
